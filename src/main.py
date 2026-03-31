@@ -89,6 +89,7 @@ app.add_middleware(
 )
 async def start_research(
     body: ResearchRequest,
+    request: Request,
     x_mainlayer_token: str = Header(default="", alias="x-mainlayer-token"),
     x_wallet: str = Header(default="", alias="x-wallet"),
 ) -> ResearchResult:
@@ -99,13 +100,33 @@ async def start_research(
 
     Supply `x-mainlayer-token` for per-query billing, or `x-wallet` for
     subscription-based access.
+
+    **Pricing:**
+    - Free tier: no charge (3/day limit)
+    - Per-query: $0.05 (quick), $0.10 (standard), $0.25 (deep)
+    - Subscription: included in plan
     """
+    # Resolve wallet identity
     wallet = x_wallet or x_mainlayer_token or "anonymous"
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Validate request
+    if not body.query.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "invalid_request", "message": "Query cannot be empty."},
+        )
 
     # Check tier entitlements
     tier = await get_tier(wallet)
     allowed, reason = can_run_research(tier, body.depth, wallet)
     if not allowed:
+        logger.warning(
+            "research: denied wallet=%s ip=%s reason=%s",
+            wallet,
+            client_ip,
+            reason[:50],
+        )
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail={"error": "quota_exceeded", "message": reason, "info": "mainlayer.fr"},
@@ -118,6 +139,7 @@ async def start_research(
         depth=body.depth,
     )
 
+    # Execute research
     result = await run_research(
         query=body.query,
         depth=body.depth,
@@ -129,12 +151,16 @@ async def start_research(
     _results[str(result.id)] = result
 
     logger.info(
-        "research: id=%s query=%r depth=%s words=%d cost=$%.4f",
+        "research: id=%s wallet=%s ip=%s query=%r depth=%s sources=%d words=%d cost=$%.4f mode=%s",
         result.id,
+        wallet,
+        client_ip,
         body.query[:50],
         body.depth.value,
+        len(result.sources),
         result.word_count,
         cost_usd or 0,
+        billing_mode.value,
     )
     return result
 

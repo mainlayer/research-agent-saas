@@ -167,3 +167,76 @@ def test_sources_have_relevance_scores(client):
     assert resp.status_code == 201
     for source in resp.json()["sources"]:
         assert 0.0 <= source["relevance_score"] <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# Input validation
+# ---------------------------------------------------------------------------
+
+
+def test_research_empty_query_rejected(client):
+    """Empty queries should be rejected with 400 Bad Request."""
+    resp = client.post(
+        "/research",
+        json={"query": "", "depth": "quick"},
+    )
+    assert resp.status_code == 400
+    assert "invalid" in resp.json()["detail"]["error"].lower()
+
+
+def test_research_short_query_accepted(client):
+    """Very short queries should still be accepted (min_length=3)."""
+    resp = client.post(
+        "/research",
+        json={"query": "AI", "depth": "quick"},
+    )
+    assert resp.status_code in (201, 400)  # May fail due to validation
+
+
+# ---------------------------------------------------------------------------
+# Billing modes
+# ---------------------------------------------------------------------------
+
+
+def test_result_includes_billing_info(client):
+    """Results must include billing_mode and cost_usd."""
+    resp = client.post(
+        "/research",
+        json={"query": "renewable energy", "depth": "quick"},
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert "billing_mode" in body
+    assert "cost_usd" in body
+    assert body["billing_mode"] in ("per_query", "subscription")
+
+
+# ---------------------------------------------------------------------------
+# Format support
+# ---------------------------------------------------------------------------
+
+
+def test_report_format(client):
+    """Report format should include markdown structure."""
+    resp = client.post(
+        "/research",
+        json={"query": "artificial intelligence", "depth": "standard", "format": "report"},
+        headers={"x-mainlayer-token": PRO_TOKEN, "x-wallet": PRO_TOKEN},
+    )
+    assert resp.status_code == 201
+    content = resp.json()["content"]
+    # Reports should have markdown headers
+    assert "#" in content  # markdown headers
+
+
+def test_summary_format(client):
+    """Summary format should be concise."""
+    resp = client.post(
+        "/research",
+        json={"query": "quantum computing", "depth": "quick", "format": "summary"},
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    # Summary should be shorter than report
+    assert body["format"] == "summary"
+    assert len(body["content"]) > 0

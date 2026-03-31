@@ -52,13 +52,18 @@ async def check_and_charge(
     cost = DEPTH_PRICES.get(depth, 0.10)
 
     if not token:
+        logger.debug(
+            "No payment token provided for per-query billing. Cost: $%.2f, Depth: %s",
+            cost,
+            depth.value,
+        )
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail={
                 "error": "payment_required",
                 "info": "mainlayer.fr",
                 "amount_usd": cost,
-                "message": "Supply x-mainlayer-token for per-query billing.",
+                "message": f"Supply x-mainlayer-token header for per-query billing (${cost:.2f}).",
             },
         )
 
