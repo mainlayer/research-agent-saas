@@ -62,7 +62,7 @@ app = FastAPI(
         "Free tier: 3 searches/day. Pro: unlimited. Powered by Mainlayer."
     ),
     version="1.0.0",
-    contact={"name": "Mainlayer", "url": "https://mainlayer.xyz"},
+    contact={"name": "Mainlayer", "url": "https://mainlayer.fr"},
     license_info={"name": "MIT"},
 )
 

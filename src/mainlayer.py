@@ -1,6 +1,6 @@
 """Mainlayer billing integration — entitlement checks and per-query payments.
 
-Base URL: https://api.mainlayer.xyz
+Base URL: https://api.mainlayer.fr
 Auth:     Authorization: Bearer <api_key>
 """
 
@@ -23,7 +23,7 @@ from models import (
 
 logger = logging.getLogger(__name__)
 
-MAINLAYER_API_URL = os.getenv("MAINLAYER_API_URL", "https://api.mainlayer.xyz")
+MAINLAYER_API_URL = os.getenv("MAINLAYER_API_URL", "https://api.mainlayer.fr")
 MAINLAYER_API_KEY = os.getenv("MAINLAYER_API_KEY", "")
 PER_QUERY_PRICE_USD = 0.10
 REQUEST_TIMEOUT = 10.0
